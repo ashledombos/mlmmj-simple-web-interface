@@ -6,21 +6,6 @@
   "app": {
     "name": "Mlmmj Web Interface"
   },
-  "users": [
-    { "username": "admin", "password": "secret"}
-  ],
-  "mlmmj": {
-    "path": "/var/spool/mlmmj"
-  }
-}
-{
-  "server": {
-    "address": "localhost",
-    "port": "4792"
-  },
-  "app": {
-    "name": "Mlmmj Web Interface"
-  },
   "groups": {
     "admin": {
       "access": ["flags", "values", "texts", "lists"]
@@ -57,4 +42,3 @@
     "path": "/var/spool/mlmmj"
   }
 }
-
