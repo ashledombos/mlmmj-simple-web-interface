@@ -112,6 +112,16 @@ function ensureAuthenticated(req, res, next) {
   res.redirect('/login')
 }
 
+// Fonction pour vérifier les droits d'accès d'un utilisateur
+function checkAccessRights(req, res, next) {
+    var username = req.user.username; // Utiliser le nom d'utilisateur
+    var userGroup = config.get('users').find(u => u.username === username).group;
+    var accessRights = config.get('groups')[userGroup].access;
+
+    req.accessRights = accessRights;
+    next();
+}
+
 // POST /login
 //   Use passport.authenticate() as route middleware to authenticate the
 //   request.  If authentication fails, the user will be redirected back to the
@@ -184,17 +194,50 @@ app.get('/group/:name', ensureAuthenticated, function(req, res){
     })
 })
 
-app.get('/group/:name/control', ensureAuthenticated, function(req, res){
+// app.get('/group/:name/control', ensureAuthenticated, function(req, res){
+//    res.render('control', {
+//      title: 'Mailing list ' + req.name,
+//      name: req.name,
+//      availables : Mlmmj.getAllAvailables(),
+//      flags: req.group.getFlags(),
+//      texts: req.group.getTexts(),
+//      values: req.group.getValues(),
+//      lists: req.group.getLists()
+//    })
+//})
+
+// Route modifiée pour gérer les droits d'accès
+app.get('/group/:name/control', ensureAuthenticated, checkAccessRights, function(req, res) {
+    var group = new Mlmmj(req.group.path, req.params.name);
+    var data = {
+      flags: group.getFlags(),
+      lists: group.getLists(),
+      texts: group.getTexts(),
+      values: group.getValues()
+    };
+
+    // Filtrer les données en fonction des droits d'accès
+    var filteredData = {};
+    Object.keys(data).forEach(function(key) {
+        if (req.accessRights.includes(key) || req.accessRights[key] === "*") {
+            filteredData[key] = data[key];
+        } else if (Array.isArray(req.accessRights[key])) {
+            // Gérer le cas des droits d'accès spécifiques (comme "lists": ["custom headers"])
+            filteredData[key] = {};
+            req.accessRights[key].forEach(function(field) {
+                if (data[key][field]) {
+                    filteredData[key][field] = data[key][field];
+                }
+            });
+        }
+    });
+
     res.render('control', {
-      title: 'Mailing list ' + req.name,
-      name: req.name,
-      availables : Mlmmj.getAllAvailables(),
-      flags: req.group.getFlags(),
-      texts: req.group.getTexts(),
-      values: req.group.getValues(),
-      lists: req.group.getLists()
-    })
-})
+      title: 'Mailing list ' + req.params.name,
+      name: req.params.name,
+      data: filteredData
+    });
+});
 
 app.get('/group/:name/subscribers', ensureAuthenticated, function(req, res){
     res.render('subscribers', {
